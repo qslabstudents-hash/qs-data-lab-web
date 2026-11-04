@@ -6160,8 +6160,8 @@ _sibList(){
 const cur=String((this.selectedSample||{}).sampleId||'').trim();
 if(!cur) return {list:[], i:-1, cur:''};
 const mat=this._pxMatLabel(cur);
-const ids=this._pxSortIds((this.samples||[]).map(s=>String((s&&s.sampleId)||'').trim())
-.filter(id=>id&&this._pxMatLabel(id)===mat));
+const ids=(this.samples||[]).map(s=>String((s&&s.sampleId)||'').trim())
+.filter(id=>id&&this._pxMatLabel(id)===mat).sort((a,b)=>this._sidCmpDesc(a,b));
 return {list:ids, i:ids.indexOf(cur), cur:cur};
 }
 _invCounts(id){
@@ -7821,6 +7821,28 @@ this._pxLayoutMap={};   // 편집 기록을 못 받아도 목록 자체는 보�
 this.setState({pxLoading:false, pxErr:true, pxItems:[]}); });
 }
 _pxMeta(id){ return (this._pxLayoutMap||{})[String(id||'').trim().toUpperCase()]||null; }
+_sidKey(id){
+const s=String(id==null?'':id).trim();
+const m=s.match(/^([A-Za-z]+)(\d+)(?:['’‘′´`](\d+))?(@)?/);
+if(!m) return {ok:false, s:s};
+return {ok:true, pre:m[1].toUpperCase(), no:parseInt(m[2],10), rep:(m[3]!=null?parseInt(m[3],10):0), at:(m[4]?1:0), s:s};
+}
+_sidCmp(a,b){
+const A=this._sidKey(a), B=this._sidKey(b);
+if(A.ok!==B.ok) return A.ok?-1:1;
+if(!A.ok) return A.s<B.s?-1:(A.s>B.s?1:0);
+if(A.pre!==B.pre) return A.pre<B.pre?-1:1;
+if(A.no!==B.no) return A.no-B.no;
+if(A.rep!==B.rep) return A.rep-B.rep;
+if(A.at!==B.at) return A.at-B.at;
+return A.s<B.s?-1:(A.s>B.s?1:0);
+}
+_sidCmpDesc(a,b){
+const A=this._sidKey(a), B=this._sidKey(b);
+if(A.ok!==B.ok) return A.ok?-1:1;
+if(!A.ok) return A.s<B.s?-1:(A.s>B.s?1:0);
+return this._sidCmp(b,a);
+}
 _pxSortIds(ids){
 const num=v=>Number(String(v).replace(/[^0-9]/g,''))||0;
 const pre=v=>String(v).replace(/[0-9].*$/,'');
@@ -13728,11 +13750,7 @@ if(!_mgXlQ) return true;
 const id=String((x&&x.sample_id)||'').toLowerCase();
 if(id.indexOf(_mgXlQ)>=0) return true;
 return this._excelRamanText(x&&x.sample_id).toLowerCase().indexOf(_mgXlQ)>=0;
-}).slice().sort((a,b)=>{
-const na=parseInt(String(a.sample_id).replace(/\D/g,''),10), nb=parseInt(String(b.sample_id).replace(/\D/g,''),10);
-if(!isNaN(na)&&!isNaN(nb)&&na!==nb) return nb-na;
-return String(b.sample_id).localeCompare(String(a.sample_id));
-});
+}).slice().sort((a,b)=>this._sidCmpDesc(a&&a.sample_id, b&&b.sample_id));
 if(_mgRmSort==='asc'||_mgRmSort==='desc'){
 const dir=(_mgRmSort==='asc')?1:-1;
 _miSorted=_miSorted.slice().sort((a,b)=>{
